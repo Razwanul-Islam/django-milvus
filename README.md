@@ -825,22 +825,6 @@ doc = FlexDoc(embedding=[...], custom_field="value", tags=["a", "b"])
 doc.save()
 ```
 
-## Publishing to PyPI
-
-```bash
-# Install build tools
-pip install build twine
-
-# Build the package
-python -m build
-
-# Upload to PyPI
-twine upload dist/*
-
-# Upload to Test PyPI first
-twine upload --repository testpypi dist/*
-```
-
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
