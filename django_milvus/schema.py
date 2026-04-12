@@ -70,25 +70,37 @@ def _create_indexes_for_model(client, model_class):
     collection_name = model_class.get_collection_name()
     options = model_class._options
 
+    if not options.indexes:
+        return
+
+    index_params = client.prepare_index_params()
+
     for index in options.indexes:
         index_dict = index.to_dict()
         try:
-            index_params = {
-                "collection_name": collection_name,
+            add_kwargs = {
                 "field_name": index_dict["field_name"],
-                "index_params": {
-                    "index_type": index_dict["index_type"],
-                    "params": index_dict.get("params", {}),
-                },
+                "index_type": index_dict["index_type"],
             }
             if index_dict.get("metric_type"):
-                index_params["index_params"]["metric_type"] = index_dict["metric_type"]
+                add_kwargs["metric_type"] = index_dict["metric_type"]
+            if index_dict.get("index_name"):
+                add_kwargs["index_name"] = index_dict["index_name"]
+            params = index_dict.get("params", {})
+            add_kwargs.update(params)
 
-            client.create_index(**index_params)
+            index_params.add_index(**add_kwargs)
         except Exception as e:
             raise SchemaError(
-                f"Failed to create index on {index_dict['field_name']}: {e}"
+                f"Failed to prepare index on {index_dict['field_name']}: {e}"
             ) from e
+
+    try:
+        client.create_index(collection_name, index_params)
+    except Exception as e:
+        raise SchemaError(
+            f"Failed to create indexes on {collection_name}: {e}"
+        ) from e
 
 
 def drop_collection_for_model(model_class):

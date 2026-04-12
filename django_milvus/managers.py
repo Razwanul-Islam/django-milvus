@@ -9,6 +9,7 @@ import copy
 from pymilvus.exceptions import MilvusException
 from .connection import get_milvus_client
 from .utils import build_filter_expr
+from .schema import _create_indexes_for_model
 from .exceptions import (
     ObjectDoesNotExist, MultipleObjectsReturned,
     SearchError, ValidationError,
@@ -266,6 +267,16 @@ class MilvusQuerySet:
             return self._output_fields
         return self.model.get_field_names()
 
+    def _ensure_loaded(self, client, collection):
+        """Ensure collection indexes exist and collection is loaded."""
+        try:
+            _create_indexes_for_model(client, self.model)
+        except Exception as e:
+            # Ignore "already exists" errors, re-raise others
+            if "already exists" not in str(e).lower() and "Duplicate" not in str(e):
+                raise
+        client.load_collection(collection)
+
     def _execute_query(self):
         """Execute a query (non-search) against Milvus."""
         client = self.model.get_client()
@@ -301,7 +312,7 @@ class MilvusQuerySet:
             results = client.query(**kwargs)
         except MilvusException as e:
             if "not loaded" in str(e):
-                client.load_collection(collection)
+                self._ensure_loaded(client, collection)
                 results = client.query(**kwargs)
             else:
                 raise
@@ -332,7 +343,7 @@ class MilvusQuerySet:
             results = client.search(**params)
         except MilvusException as e:
             if "not loaded" in str(e):
-                client.load_collection(collection)
+                self._ensure_loaded(client, collection)
                 results = client.search(**params)
             else:
                 raise
@@ -357,7 +368,7 @@ class MilvusQuerySet:
             results = client.hybrid_search(**params)
         except MilvusException as e:
             if "not loaded" in str(e):
-                client.load_collection(collection)
+                self._ensure_loaded(client, collection)
                 results = client.hybrid_search(**params)
             else:
                 raise
