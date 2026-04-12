@@ -6,6 +6,7 @@ including vector similarity search, filtering, and CRUD operations.
 """
 
 import copy
+from pymilvus.exceptions import MilvusException
 from .connection import get_milvus_client
 from .utils import build_filter_expr
 from .exceptions import (
@@ -296,7 +297,14 @@ class MilvusQuerySet:
         if self._consistency_level:
             kwargs["consistency_level"] = self._consistency_level
 
-        results = client.query(**kwargs)
+        try:
+            results = client.query(**kwargs)
+        except MilvusException as e:
+            if "not loaded" in str(e):
+                client.load_collection(collection)
+                results = client.query(**kwargs)
+            else:
+                raise
         return results
 
     def _execute_search(self):
@@ -320,7 +328,14 @@ class MilvusQuerySet:
         if self._consistency_level:
             params["consistency_level"] = self._consistency_level
 
-        results = client.search(**params)
+        try:
+            results = client.search(**params)
+        except MilvusException as e:
+            if "not loaded" in str(e):
+                client.load_collection(collection)
+                results = client.search(**params)
+            else:
+                raise
         return results
 
     def _execute_hybrid_search(self):
@@ -337,7 +352,15 @@ class MilvusQuerySet:
         if self._partition_names:
             params["partition_names"] = self._partition_names
 
-        results = client.hybrid_search(**params)
+        collection = self.model.get_collection_name()
+        try:
+            results = client.hybrid_search(**params)
+        except MilvusException as e:
+            if "not loaded" in str(e):
+                client.load_collection(collection)
+                results = client.hybrid_search(**params)
+            else:
+                raise
         return results
 
     def _fetch_all(self):
