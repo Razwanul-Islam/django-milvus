@@ -51,10 +51,10 @@ model = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/django-milvus/django-milvus"
-Documentation = "https://github.com/django-milvus/django-milvus#readme"
-Repository = "https://github.com/django-milvus/django-milvus"
-Issues = "https://github.com/django-milvus/django-milvus/issues"
+Homepage = "https://github.com/Razwanul-Islam/django-milvus"
+Documentation = "https://github.com/Razwanul-Islam/django-milvus#readme"
+Repository = "https://github.com/Razwanul-Islam/django-milvus"
+Issues = "https://github.com/Razwanul-Islam/django-milvus/issues"
 
 [tool.setuptools.packages.find]
 include = ["django_milvus*"]

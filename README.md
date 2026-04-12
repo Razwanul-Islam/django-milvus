@@ -3,7 +3,6 @@
 Django integration for [Milvus](https://milvus.io/) vector database. Use Milvus as a Django secondary database with a familiar ORM-like interface for storing and searching vector embeddings.
 
 [![PyPI version](https://badge.fury.io/py/django-milvus.svg)](https://pypi.org/project/django-milvus/)
-[![Python](https://img.shields.io/pypi/pyversions/django-milvus.svg)](https://pypi.org/project/django-milvus/)
 [![Django](https://img.shields.io/badge/django-4.2%20%7C%205.0%20%7C%205.1-green.svg)](https://djangoproject.com/)
 
 ## Features
