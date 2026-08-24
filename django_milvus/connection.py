@@ -5,6 +5,7 @@ Provides thread-safe connection pooling using Django settings.
 """
 
 import threading
+import time
 from django.conf import settings
 from pymilvus import MilvusClient
 
@@ -14,8 +15,18 @@ from .exceptions import ConnectionError
 class MilvusConnectionManager:
     """Thread-safe Milvus connection manager."""
 
+    #: Seconds a cached connection is trusted without re-probing it.
+    #: The liveness probe is a real network round trip, so running it on
+    #: every call added one to every query in the application - more than
+    #: a cache hit costs in total. Throttling it keeps the benefit (a
+    #: dropped connection is still detected and replaced) at a fraction of
+    #: the cost; a connection that dies inside the window surfaces as a
+    #: normal query error and is discarded then.
+    PROBE_INTERVAL = 30.0
+
     def __init__(self):
         self._connections = {}
+        self._probed_at = {}
         self._lock = threading.Lock()
 
     def _get_settings(self, alias="default"):
@@ -82,12 +93,17 @@ class MilvusConnectionManager:
 
         if key in self._connections:
             client = self._connections[key]
+            last_probe = self._probed_at.get(key, 0)
+            if (time.monotonic() - last_probe) < self.PROBE_INTERVAL:
+                return client
             try:
                 client.list_collections()
+                self._probed_at[key] = time.monotonic()
                 return client
             except Exception:
                 with self._lock:
                     self._connections.pop(key, None)
+                    self._probed_at.pop(key, None)
 
         with self._lock:
             if key in self._connections:
@@ -111,6 +127,7 @@ class MilvusConnectionManager:
 
                 client = MilvusClient(**kwargs)
                 self._connections[key] = client
+                self._probed_at[key] = time.monotonic()
                 return client
             except Exception as e:
                 raise ConnectionError(
@@ -123,6 +140,7 @@ class MilvusConnectionManager:
         key = (alias, thread_id)
         with self._lock:
             client = self._connections.pop(key, None)
+            self._probed_at.pop(key, None)
             if client:
                 try:
                     client.close()
@@ -138,6 +156,7 @@ class MilvusConnectionManager:
                 except Exception:
                     pass
             self._connections.clear()
+            self._probed_at.clear()
 
 
 # Global connection manager instance

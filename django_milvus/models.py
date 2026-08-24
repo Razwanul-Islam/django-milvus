@@ -31,6 +31,11 @@ class MilvusModelOptions:
         self.enable_dynamic_field = False
         self.auto_load = True
         self.indexes = []
+        # Caching is opt-in per model. None or False leaves this model
+        # uncached unless a queryset asks explicitly with .cache().
+        # True uses the alias defaults; a dict overrides them, e.g.
+        #     cache = {"ttl": 600, "semantic": {"threshold": 0.98}}
+        self.cache = None
 
         if meta:
             for attr in dir(meta):
@@ -301,6 +306,26 @@ class MilvusModel(metaclass=MilvusModelMeta):
         return names
 
     @classmethod
+    def invalidate_cache(cls, reason="write"):
+        """Invalidate every cached read for this model's collection.
+
+        Called automatically by every write that goes through the ORM.
+        Call it yourself after writing with a raw client, which the cache
+        cannot see.
+        """
+        from .cache import get_cache, resolve_cache_options
+        options = resolve_cache_options(cls, None)
+        # Even models that never opted in may hold cached entries from an
+        # explicit .cache() call, so fall back to the default alias.
+        alias = options.get("alias", "default") if options else "default"
+        cache = get_cache(alias)
+        if cache is None:
+            return 0
+        return cache.invalidate(
+            cls.get_collection_name(), reason=reason, sender=cls
+        )
+
+    @classmethod
     def get_vector_fields(cls):
         """Get dict of vector field names to field objects."""
         from .fields import (
@@ -344,6 +369,7 @@ class MilvusModel(metaclass=MilvusModelMeta):
                 data=[data],
             )
 
+        self.invalidate_cache()
         return self
 
     def delete(self):
@@ -364,6 +390,7 @@ class MilvusModel(metaclass=MilvusModelMeta):
             collection_name=collection,
             filter=filter_expr,
         )
+        self.invalidate_cache()
         self._is_new = True
 
     def refresh(self):

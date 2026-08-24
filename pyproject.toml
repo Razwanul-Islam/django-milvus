@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-milvus"
-version = "0.1.11"
+version = "0.2.0"
 description = "Django integration for Milvus vector database - use Milvus as a Django secondary database with ORM-like interface"
 readme = "README.md"
 license = {text = "MIT"}
@@ -36,6 +36,10 @@ classifiers = [
 dependencies = [
     "django>=4.2",
     "pymilvus>=2.4.0,<3.0",
+    # Used by the semantic cache for vector similarity. Already present
+    # transitively via pymilvus; declared here because the cache imports
+    # it directly.
+    "numpy>=1.21",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +52,19 @@ dev = [
 ]
 model = [
     "pymilvus[model]",
+]
+# Shared L2 cache tier.
+cache = [
+    "redis>=4.2",
+]
+# Optional accelerators for the cache. None are required: without them
+# the cache uses an exact NumPy scan, pickle serialization, no
+# compression, and no memory-pressure handling.
+fast = [
+    "hnswlib>=0.7",
+    "lz4>=4.0",
+    "msgpack>=1.0",
+    "psutil>=5.9",
 ]
 
 [project.urls]
@@ -62,3 +79,6 @@ include = ["django_milvus*"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
 python_files = ["tests.py", "test_*.py"]
+markers = [
+    "cache: override MILVUS_CACHE settings for one test",
+]

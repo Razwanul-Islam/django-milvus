@@ -54,3 +54,22 @@ class ObjectDoesNotExist(DjangoMilvusError):
 class MultipleObjectsReturned(DjangoMilvusError):
     """Raised when multiple objects are returned but one expected."""
     pass
+
+
+class CacheError(DjangoMilvusError):
+    """Base exception for the caching layer."""
+    pass
+
+
+class CacheConfigurationError(CacheError):
+    """Raised when MILVUS_CACHE settings are invalid."""
+    pass
+
+
+class CacheBackendError(CacheError):
+    """Raised when a cache backend operation fails.
+
+    Never propagates to user code: the cache layer is fail-open and
+    degrades to querying Milvus directly.
+    """
+    pass
